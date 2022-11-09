@@ -22,15 +22,7 @@ type peer struct {
 	ctx          context.Context
 }
 
-func (p *peer) AccessRequest(ctx context.Context, req *accessRequest.Request) (*accessRequest.Reply, error) {
-	id := req.Id
-	
 
-	rep := &accessRequest.Reply{Id: p.id}
-	log.Printf("Sorting access to critical section")
-	return rep, nil
-
-}
 
 func main() {
 	//creating peer using terminal argument to create port 
@@ -45,7 +37,7 @@ func main() {
 		requestQueue: make(map[int32]accessRequest.AccessRequestClient),
 		peers:       make(map[int32]accessRequest.AccessRequestClient),
 		ctx:           ctx,
-		state 		  string,
+		state: 		  "Ingrid",
 	}
 
 	// Create listener tcp on port ownPort
@@ -84,8 +76,27 @@ func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		p.sendPingToAll()
+		p.sendAccessRequestToAll()
 	}
 }
 
+func (p *peer) AccessRequest(ctx context.Context, req *accessRequest.Request) (*accessRequest.Reply, error) {
+	id := req.Id
+	
+
+	rep := &accessRequest.Reply{Id: p.id}
+	log.Printf("Sorting access to critical section with id: ", id)
+	return rep, nil
+
+}
+
+func (p *peer) sendAccessRequestToAll() {
+	request := &accessRequest.Request{Id: p.id}
+	for id, peer := range p.peers {
+		reply, err := peer.AccessRequest(p.ctx, request)
+		if err != nil {
+			fmt.Println("Something went wrong")
+		}
+		fmt.Printf("Got reply from id %v: %v \n", id, reply.Id)
+	}
 }
