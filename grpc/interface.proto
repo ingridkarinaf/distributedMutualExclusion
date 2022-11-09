@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package accessRequest;
+option go_package = "https://github.com/ingridkarinaf/distributedMutualExclusion;accessRequest";
+
+service AccessRequest {
+    rpc accessRequest (Request) returns (Reply) {}
+}
+
+message Request {
+    int32 id = 1;
+}
+
+message Reply {
+    int32 id = 1;
+}
