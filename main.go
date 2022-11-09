@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	accessRequest "github.com/ingridkarinaf/distributedMutualExclusion/grpc"
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 )
 
 type peer struct {

@@ -1,4 +1,4 @@
-module accessRequest
+module github.com/ingridkarinaf/distributedMutualExclusion
 
 go 1.19
 
