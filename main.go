@@ -35,9 +35,11 @@ func main() {
 	p := &peer{
 		id:           ownPort,
 		requestQueue: make(map[int32]accessRequest.AccessRequestClient),
+
 		peers:        make(map[int32]accessRequest.AccessRequestClient),
 		ctx:          ctx,
 		state:        input_state, //wanted / not_wanted / held
+
 	}
 
 	// Create listener tcp on port ownPort
@@ -83,6 +85,7 @@ func main() {
 
 func (p *peer) AccessRequest(ctx context.Context, req *accessRequest.Request) (*accessRequest.Reply, error) {
 	id := req.Id
+
 	// rep := &accessRequest.Reply{Id: p.id}
 
 	// 	On receive ‘req (Ti,pi)’do
@@ -134,4 +137,16 @@ func (p *peer) sendAccessRequestToAll() (*accessRequest.Reply, error) {
 	}
 
 	return nil, nil
+
+}
+
+func (p *peer) sendAccessRequestToAll() {
+	request := &accessRequest.Request{Id: p.id}
+	for id, peer := range p.peers {
+		reply, err := peer.AccessRequest(p.ctx, request)
+		if err != nil {
+			fmt.Println("Something went wrong")
+		}
+		fmt.Printf("Got reply from id %v: %v \n", id, reply.Id)
+	}
 }
