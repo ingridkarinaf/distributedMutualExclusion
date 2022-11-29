@@ -21,10 +21,14 @@ type peer struct {
 	peers        map[int32]accessRequest.AccessRequestClient
 	state        string
 	ctx          context.Context
+	lock 		 chan(bool)
+	approvals    map[int32]bool
 }
 
 func main() {
 	//creating peer using terminal argument to create port
+	lock := make(chan bool, 1)
+	lock <- true 
 	arg1, _ := strconv.ParseInt(os.Args[1], 10, 32) //Takes arguments 0, 1 and 2, see comment X
 	ownPort := int32(arg1) + 5001
 	input_state := "" //Takes arguments 0, 1 and 2, see comment X
@@ -38,6 +42,8 @@ func main() {
 		peers:        make(map[int32]accessRequest.AccessRequestClient),
 		ctx:          ctx,
 		state:        input_state, //wanted / not_wanted / holding
+		lock: 		  lock,
+		approvals: 	  make(map[int32]bool),
 	}
 
 	// Create listener tcp on port ownPort
@@ -78,26 +84,30 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		log.Printf("%v wants to drive the car", p.id)
-		p.sendAccessRequestToAll()
+		reply, err := p.sendAccessRequestToAll()
+		if err != nil {
+			log.Printf("Something went wrong with sendAccessRequestToAll")
+		}
+		log.Printf("%v got a reply: %s", p.id, reply)
 	}
 }
 
 func (p *peer) AccessRequest(ctx context.Context, req *accessRequest.Request) (*accessRequest.Reply, error) {
+	<-p.lock
 	id := req.Id
 
-	if p.state == "holding" || (p.state == "wanted" && p.id < id) {
+	if p.state == "holding" || (p.state == "wanted" && p.id < id) || (p.state == "wanted" && p.approvals[id]) {
 		log.Printf("Either %v is using the car or it wants it. We have put %v in the queue", p.id, id)
 		p.requestQueue[id] = p.peers[id]
 		for p.state == "holding" {
-
+			//log.Println(p.id, "is driving the car")
 		}
 
 	} else {
 		log.Printf("Peer with id %v can drive it ", id)
-		return &accessRequest.Reply{Id: p.id}, nil
 
 	}
-
+	p.lock<-true
 	return &accessRequest.Reply{Id: p.id}, nil
 
 }
@@ -106,6 +116,8 @@ func (p *peer) sendAccessRequestToAll() (*accessRequest.Reply, error) {
 	request := &accessRequest.Request{Id: p.id}
 	p.state = "wanted"
 
+	log.Println("making access requests")
+
 	for id, peer := range p.peers { //All the peers we will send the request to
 
 		reply, err := peer.AccessRequest(p.ctx, request)
@@ -113,6 +125,7 @@ func (p *peer) sendAccessRequestToAll() (*accessRequest.Reply, error) {
 			log.Printf("Something went wrong when getting reply from %v", id)
 		}
 		log.Printf("Got reply from peer: %v \n", reply.Id)
+		p.approvals[id] = true
 
 	}
 
@@ -121,13 +134,16 @@ func (p *peer) sendAccessRequestToAll() (*accessRequest.Reply, error) {
 	time.Sleep(5 * time.Second)
 	log.Printf("%v released the car", p.id)
 	p.state = "not wanted"
+	//If the node has anyone in the queue
+	var repl *accessRequest.Reply
 	for id, peer := range p.requestQueue {
 		_ = peer
+		p.approvals[id] = false
 		rep := &accessRequest.Reply{Id: p.id}
+		repl = rep
 		log.Printf("%v sends reply to %v ", p.id, id)
 		delete(p.requestQueue, id)
-		return rep, nil
 	}
 
-	return nil, nil
+	return repl, nil
 }

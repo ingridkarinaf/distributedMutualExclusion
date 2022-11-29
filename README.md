@@ -6,6 +6,15 @@ To run the project, open 3 different terminals and run the following commands in
 `go run main.go 1`
 `go run main.go 2`
 
+Changes
+-------
+
+- Return statement inside of the request queue loop
+After realising it is in fact possible for multiple nodes to access the ciritcal section as the same time, we identified the issue to be that gRPC calls are processed concurrently (i.e. as threads), meaning that we had to implement a lock in the "AccessRequest" method, ensuring that the different nodes could not execute the method at the same time. We implemented the lock using channels, in which each node will have to wait to receive a value from the channel before it is able to proceed into the AccessRequest gRPC method, in which each node accesses the critical section. 
+
+
+-------
+
 This will create 3 separate severs running on ports 5001, 5002 and 5003. 
 
 The car represents our critical section. To enter the critical section, you press enter in the terminal (peer) who you want to access the critical section with. 
