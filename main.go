@@ -21,14 +21,14 @@ type peer struct {
 	peers        map[int32]accessRequest.AccessRequestClient
 	state        string
 	ctx          context.Context
-	lock 		 chan(bool)
+	lock         chan (bool)
 	approvals    map[int32]bool
 }
 
 func main() {
 	//creating peer using terminal argument to create port
 	lock := make(chan bool, 1)
-	lock <- true 
+	lock <- true
 	arg1, _ := strconv.ParseInt(os.Args[1], 10, 32) //Takes arguments 0, 1 and 2, see comment X
 	ownPort := int32(arg1) + 5001
 	input_state := "" //Takes arguments 0, 1 and 2, see comment X
@@ -42,8 +42,8 @@ func main() {
 		peers:        make(map[int32]accessRequest.AccessRequestClient),
 		ctx:          ctx,
 		state:        input_state, //wanted / not_wanted / holding
-		lock: 		  lock,
-		approvals: 	  make(map[int32]bool),
+		lock:         lock,
+		approvals:    make(map[int32]bool),
 	}
 
 	// Create listener tcp on port ownPort
@@ -107,7 +107,7 @@ func (p *peer) AccessRequest(ctx context.Context, req *accessRequest.Request) (*
 		log.Printf("Peer with id %v can drive it ", id)
 
 	}
-	p.lock<-true
+	p.lock <- true
 	return &accessRequest.Reply{Id: p.id}, nil
 
 }
@@ -143,6 +143,7 @@ func (p *peer) sendAccessRequestToAll() (*accessRequest.Reply, error) {
 		repl = rep
 		log.Printf("%v sends reply to %v ", p.id, id)
 		delete(p.requestQueue, id)
+
 	}
 
 	return repl, nil
