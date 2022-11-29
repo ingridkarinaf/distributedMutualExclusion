@@ -9,8 +9,17 @@ To run the project, open 3 different terminals and run the following commands in
 Changes
 -------
 
-- Return statement inside of the request queue loop
-After realising it is in fact possible for multiple nodes to access the ciritcal section as the same time, we identified the issue to be that gRPC calls are processed concurrently (i.e. as threads), meaning that we had to implement a lock in the "AccessRequest" method, ensuring that the different nodes could not execute the method at the same time. We implemented the lock using channels, in which each node will have to wait to receive a value from the channel before it is able to proceed into the AccessRequest gRPC method, in which each node accesses the critical section. 
+
+
+The problem with our initial solution was that we didn't take into account the scenario, where a client with a lower port number would had already given a permission to a client with higher port number. The problem here would be when the client with the lower port number would also want to access the critical section while both of them would be waiting a response from the third client. We modeled the problem and the solution in the following graph: https://github.com/ingridkarinaf/distributedMutualExclusion/blob/main/Pictures/mandatory4scenario.drawio.png
+
+From the graph with previous implementation with our wrong logic 5001 would start being in the critical section (t1). 5003 would requeast access first to the critical section and get response from both peers (t2). Right after 5002 would request access and 5003 would give a permission to 5002 since the id is smaller (t3). Next, when 5001 would relaease the critical section it would give the permission simultaneously to both 5002 and 5003 (t4), and since both of them had also approved each others they would both access the critical section at the sametime. 
+
+To solve this we needed to find a way to know if a peer had already given a response to another peer while waiting the critical section to become free. Before we always gave response for a peer if their id was smaller. Now we will also be checking the condition if a peer requesting access has already given us a response. In such situation we would queue this client to the request queue to be allowed to drive the car after. The correct scenario is showed in the graph as "new implementation" where 5003 will access the critical section before 5002, since 5002 had already approved 5003 earlier.
+
+Another problem that we found from our program was that we had a return statment inside of the for loop which job was to iterate over the list of peers who were set into the request queue. Having the return statment in the queue caused that only one peer was replied with a permission. 
+
+Furthermore, we identified one more issue to be gRPC calls being processed concurrently (i.e. as threads), meaning that we had to implement a lock in the "AccessRequest" method, ensuring that the different nodes could not execute the method at the same time. We implemented the lock using channels, in which each node will have to wait to receive a value from the channel before it is able to proceed into the AccessRequest gRPC method, in which each node accesses the critical section. 
 
 
 -------
